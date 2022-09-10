@@ -117,9 +117,10 @@ func (b *baseToken) flowComplete() {
 	}
 
 	b.m.Lock()
-	defer b.m.Unlock()
 	b.status = 1
-	if b.callbak != nil && b.real != nil {
+	call := b.callbak != nil && b.real != nil
+	b.m.Unlock()
+	if call {
 		b.callbak(b.real)
 	}
 }
