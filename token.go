@@ -54,6 +54,8 @@ type Token interface {
 	Done() <-chan struct{}
 
 	Error() error
+	// 设置Token完成时的回调函数，请不要使用耗时较长的函数
+	SetCallback(func(Token))
 }
 
 type TokenErrorSetter interface {
@@ -70,6 +72,9 @@ type baseToken struct {
 	m        sync.RWMutex
 	complete chan struct{}
 	err      error
+	// token创建的时间戳，毫秒
+	tm      int64
+	callbak func(Token)
 }
 
 // Wait implements the Token Wait method.
@@ -104,6 +109,12 @@ func (b *baseToken) flowComplete() {
 	default:
 		close(b.complete)
 	}
+
+	b.m.RLock()
+	defer b.m.RUnlock()
+	if b.callbak != nil {
+		b.callbak(b)
+	}
 }
 
 func (b *baseToken) Error() error {
@@ -119,18 +130,24 @@ func (b *baseToken) setError(e error) {
 	b.m.Unlock()
 }
 
+func (b *baseToken) SetCallback(f func(Token)) {
+	b.m.Lock()
+	defer b.m.Unlock()
+	b.callbak = f
+}
+
 func newToken(tType byte) tokenCompletor {
 	switch tType {
 	case packets.Connect:
-		return &ConnectToken{baseToken: baseToken{complete: make(chan struct{})}}
+		return &ConnectToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
 	case packets.Subscribe:
-		return &SubscribeToken{baseToken: baseToken{complete: make(chan struct{})}, subResult: make(map[string]byte)}
+		return &SubscribeToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}, subResult: make(map[string]byte)}
 	case packets.Publish:
-		return &PublishToken{baseToken: baseToken{complete: make(chan struct{})}}
+		return &PublishToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
 	case packets.Unsubscribe:
-		return &UnsubscribeToken{baseToken: baseToken{complete: make(chan struct{})}}
+		return &UnsubscribeToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
 	case packets.Disconnect:
-		return &DisconnectToken{baseToken: baseToken{complete: make(chan struct{})}}
+		return &DisconnectToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
 	}
 	return nil
 }
