@@ -168,6 +168,10 @@ func (d *DummyToken) setError(e error) {}
 
 func (d *DummyToken) SetCallback(f func(Token)) {}
 
+func (d *DummyToken) Timestamp() int64 {
+	return 0
+}
+
 // PlaceHolderToken does nothing and was implemented to allow a messageid to be reserved
 // it differs from DummyToken in that calling flowComplete does not generate an error (it
 // is expected that flowComplete will be called when the token is overwritten with a real token)
@@ -202,3 +206,7 @@ func (p *PlaceHolderToken) Error() error {
 func (p *PlaceHolderToken) setError(e error) {}
 
 func (p *PlaceHolderToken) SetCallback(func(Token)) {}
+
+func (p *PlaceHolderToken) Timestamp() int64 {
+	return 0
+}

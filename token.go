@@ -54,6 +54,8 @@ type Token interface {
 	Done() <-chan struct{}
 
 	Error() error
+	// 获取Token生成时的时间戳，毫秒
+	Timestamp() int64
 	// 设置Token完成时的回调函数，请不要使用耗时较长的函数
 	SetCallback(func(Token))
 }
@@ -72,8 +74,12 @@ type baseToken struct {
 	m        sync.RWMutex
 	complete chan struct{}
 	err      error
+	// 是否完成，0：未完成，1：完成
+	status uint
 	// token创建的时间戳，毫秒
-	tm      int64
+	tm int64
+	// newToken方法生成的具体Token的引用，用于callback
+	real    Token
 	callbak func(Token)
 }
 
@@ -89,7 +95,7 @@ func (b *baseToken) WaitTimeout(d time.Duration) bool {
 	select {
 	case <-b.complete:
 		if !timer.Stop() {
-			<-timer.C
+			timer.Stop()
 		}
 		return true
 	case <-timer.C:
@@ -110,10 +116,11 @@ func (b *baseToken) flowComplete() {
 		close(b.complete)
 	}
 
-	b.m.RLock()
-	defer b.m.RUnlock()
-	if b.callbak != nil {
-		b.callbak(b)
+	b.m.Lock()
+	defer b.m.Unlock()
+	b.status = 1
+	if b.callbak != nil && b.real != nil {
+		b.callbak(b.real)
 	}
 }
 
@@ -130,24 +137,41 @@ func (b *baseToken) setError(e error) {
 	b.m.Unlock()
 }
 
+func (b *baseToken) Timestamp() int64 {
+	return b.tm
+}
+
 func (b *baseToken) SetCallback(f func(Token)) {
 	b.m.Lock()
 	defer b.m.Unlock()
 	b.callbak = f
+	if b.status != 0 && b.real != nil {
+		f(b.real)
+	}
 }
 
 func newToken(tType byte) tokenCompletor {
 	switch tType {
 	case packets.Connect:
-		return &ConnectToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
+		t := &ConnectToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
+		t.baseToken.real = t
+		return t
 	case packets.Subscribe:
-		return &SubscribeToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}, subResult: make(map[string]byte)}
+		t := &SubscribeToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}, subResult: make(map[string]byte)}
+		t.baseToken.real = t
+		return t
 	case packets.Publish:
-		return &PublishToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
+		t := &PublishToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
+		t.baseToken.real = t
+		return t
 	case packets.Unsubscribe:
-		return &UnsubscribeToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
+		t := &UnsubscribeToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
+		t.baseToken.real = t
+		return t
 	case packets.Disconnect:
-		return &DisconnectToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
+		t := &DisconnectToken{baseToken: baseToken{complete: make(chan struct{}), tm: time.Now().UnixMilli()}}
+		t.baseToken.real = t
+		return t
 	}
 	return nil
 }
