@@ -28,7 +28,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/harri2012/mqtt.go/packets"
 )
 
 const closedNetConnErrorText = "use of closed network connection" // error string for closed conn (https://golang.org/src/net/error_test.go)
@@ -370,9 +370,10 @@ type commsFns interface {
 // startComms initiates goroutines that handles communications over the network connection
 // Messages will be stored (via commsFns) and deleted from the store as necessary
 // It returns two channels:
-//  packets.PublishPacket - Will receive publish packets received over the network.
-//  Closed when incoming comms routines exit (on shutdown or if network link closed)
-//  error - Any errors will be sent on this channel. The channel is closed when all comms routines have shut down
+//
+//	packets.PublishPacket - Will receive publish packets received over the network.
+//	Closed when incoming comms routines exit (on shutdown or if network link closed)
+//	error - Any errors will be sent on this channel. The channel is closed when all comms routines have shut down
 //
 // Note: The comms routines monitoring oboundp and obound will not shutdown until those channels are both closed. Any messages received between the
 // connection being closed and those channels being closed will generate errors (and nothing will be sent). That way the chance of a deadlock is

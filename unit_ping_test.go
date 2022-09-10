@@ -22,7 +22,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/eclipse/paho.mqtt.golang/packets"
+	"github.com/harri2012/mqtt.go/packets"
 )
 
 func Test_NewPingReqMessage(t *testing.T) {
