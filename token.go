@@ -95,7 +95,7 @@ func (b *baseToken) WaitTimeout(d time.Duration) bool {
 	select {
 	case <-b.complete:
 		if !timer.Stop() {
-			timer.Stop()
+			<-timer.C
 		}
 		return true
 	case <-timer.C:
@@ -144,9 +144,10 @@ func (b *baseToken) Timestamp() int64 {
 
 func (b *baseToken) SetCallback(f func(Token)) {
 	b.m.Lock()
-	defer b.m.Unlock()
 	b.callbak = f
-	if b.status != 0 && b.real != nil {
+	call := b.status != 0 && b.real != nil
+	b.m.Unlock()
+	if call {
 		f(b.real)
 	}
 }
