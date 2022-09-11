@@ -134,8 +134,8 @@ func (b *baseToken) Error() error {
 func (b *baseToken) setError(e error) {
 	b.m.Lock()
 	b.err = e
-	b.flowComplete()
 	b.m.Unlock()
+	b.flowComplete()
 }
 
 func (b *baseToken) Timestamp() int64 {
