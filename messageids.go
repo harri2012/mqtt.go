@@ -56,7 +56,6 @@ func (mids *messageIds) cleanUp() {
 		case nil: // should not be any nil entries
 			continue
 		}
-		token.flowComplete()
 	}
 	mids.index = make(map[uint16]tokenCompletor)
 	mids.Unlock()
